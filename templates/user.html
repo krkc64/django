@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>whiteBoard User </title>
+</head>
+<body>
+
+    <form action="board"  id="user" method="POST">
+        {% csrf_token %}
+        <div>
+            <input type="text" name="user_name" placeholder="Enter UserNmae">
+            <button class="btn">submit</button>
+        </div>
+        <div>
+                {% for message in messages %}
+                <h2  id="err">{{message}}</h2>
+                {% endfor %}
+                </div>
+    </form>
+</body>
+</html>

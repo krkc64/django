@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WhiteBoard</title>
+ <style>
+            #all_users{
+  padding: 10px 0;
+  font-size: 16px;
+  color: black;
+  margin-bottom: 30px;
+  border-radius: 10px;
+  position: absolute;
+  top: 25px;
+  right: 25px;
+}
+#lead_privi{
+ padding: 10px 0;
+  font-size: 16px;
+  color: black;
+  margin-bottom: 30px;
+  border-radius: 10px;
+  position: absolute;
+  top: 25px;
+  right: 40%;
+}
+
+    </style>
+</head>
+<body>
+
+
+    <div> Welcome {{username}}..</div>
+    <canvas id="Canvas" width="500" height="500" style="border:2px solid black"></canvas>
+
+
+    <div id="all_users">
+        <h2>Connected people</h2>
+        <ol id="users">
+<!--    {% for user in all_users %}-->
+<!--            <li>{{user}}</li>-->
+<!--    {% endfor %}-->
+        </ol>
+    </div>
+      <div>
+        <h4>Drawn by</h4>
+        <h2 id="written_by"></h2>
+    </div>
+    <div id="lead_privi">
+        <h4>Leader Is:</h4>
+        <div id="lead"></div>
+        <div id="bt"><input type="button" id="clear" value="ClearBoard">
+            <input type="button" id="NewBoard" value="NewBoard"></div>
+    </div>
+    <script>
+
+
+        const user = '{{username}}'
+        var starting_coor = [];
+        var moment = [];
+        var role;
+        var x, y;
+        var draw = false;
+
+        document.addEventListener('DOMContentLoaded', () => {
+
+
+
+            const canvas = document.querySelector('#Canvas');
+            const context = canvas.getContext('2d');
+
+            const socket = new WebSocket('ws://' + window.location.host + '/ws/');
+
+            function erase() {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            }
+
+            function recived(data) {
+
+                var user_writing = data.username;
+                if (typeof user_writing === 'undefined'){console.log("");}
+                else{
+                document.getElementById("written_by").innerHTML = user_writing;}
+
+                var start = data.start;
+                context.beginPath();
+                context.strokeStyle = 'black';
+                context.lineWidth = 1;
+                context.moveTo(start[0], start[1]);
+
+                var coor = data.coordinate;
+                var i = 0;
+                while (i <= coor.length) {
+                    context.lineTo(coor[i], coor[i + 1]);
+                    context.stroke();
+                    i = i + 2
+                }
+                context.closePath();
+            }
+
+             socket.onopen = (e) => {
+                socket.send(JSON.stringify({
+                    'type': 'numbers',
+                    'start': starting_coor,
+                    'coordinate': moment,
+                    'username': user,
+                    'conn': 'new',
+                    'erase': 'no'
+
+                }));
+
+
+
+            };
+
+            socket.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+                if (typeof data.erase != 'undefined'){ console.log("command is to erase");
+                 erase();}
+                else{
+
+                if ( data.disc == 'yes'){
+                var user_list = data.user_list;
+                const myNode = document.getElementById("users");
+                myNode.innerHTML = '';
+                for (var z = 0; z < user_list.length; z++){
+                var para = document.createElement("li");
+                var node = document.createTextNode(user_list[z]);
+                para.appendChild(node);
+                var element = document.getElementById("users");
+                element.appendChild(para);
+                }
+                }
+                else if (data.lead_disc == 'yes' && typeof data.lead_name != 'undefined'){
+                if (data.lead_name == user){role = undefined;} else {console.log("");}
+                }
+                else{console.log("");}
+
+
+                if (typeof data.start === 'undefined' && typeof data.disc === 'undefined') {
+
+                const lea = document.getElementById("lead");
+                lea.innerHTML = '';
+                var le_name = document.createElement("p");
+                var nod = document.createTextNode(data.lead_name);
+                le_name.appendChild(nod);
+                var element = document.getElementById("lead");
+                element.appendChild(le_name);
+
+                if (typeof role === 'undefined' ) {
+                role = data.role;}
+                else {console.log("");}
+                //console.log("role is", data.username, role);
+
+                if (role == 'member') {
+                document.getElementById('bt').style.display = "none"
+                } else if (role == 'undefined') {
+                document.getElementById('bt').style.display = "none"
+                } else {
+                document.getElementById('bt').style.display = "" }
+
+                var user_list = data.user_list;
+                const myNode = document.getElementById("users");
+                myNode.innerHTML = '';
+                for (var z = 0; z < user_list.length; z++){
+                var para = document.createElement("li");
+                var node = document.createTextNode(user_list[z]);
+                para.appendChild(node);
+                var element = document.getElementById("users");
+                element.appendChild(para);
+                }
+                 }
+                else{recived(data);}
+                }
+
+
+            };
+
+
+            socket.onclose = (e) => {
+                alert("Chat socket closed unexpectedly");
+                console.error('Chat socket closed unexpectedly');
+                console.error(e);
+            };
+
+
+
+            canvas.addEventListener('mousedown', (event) => {
+                draw = true;
+
+
+                x = event.offsetX;
+                y = event.offsetY;
+                context.beginPath();
+                context.strokeStyle = 'black';
+                context.lineWidth = 1;
+                context.moveTo(x, y);
+                starting_coor.push(x);
+                starting_coor.push(y);
+
+            });
+
+            canvas.addEventListener('mousemove', (event) => {
+                if (draw === true) {
+                    x = event.offsetX;
+                    y = event.offsetY;
+                    context.lineTo(x, y);
+                    context.stroke();
+                    moment.push(x);
+                    moment.push(y);
+
+                }
+
+            });
+
+            canvas.addEventListener('mouseup', (event) => {
+                draw = false;
+                context.closePath();
+                socket.send(JSON.stringify({
+                    'type': 'numbers',
+                    'start': starting_coor,
+                    'coordinate': moment,
+                    'username': user,
+                    'conn': 'old',
+                    'erase': 'no'
+
+                }));
+                starting_coor.length = 0;
+                moment.length = 0;
+
+            });
+
+
+            document.querySelector('#NewBoard').onclick = (e) => {
+                socket.send(JSON.stringify({
+                    'type': 'numbers',
+                    'start': starting_coor,
+                    'coordinate': moment,
+                    'username': user,
+                    'conn': 'old',
+                    'erase': 'yes'
+                }));
+                context.clearRect(0, 0, canvas.width, canvas.height);
+            }
+
+            document.querySelector('#clear').onclick = (e) => {
+                socket.send(JSON.stringify({
+                    'type': 'numbers',
+                    'start': starting_coor,
+                    'coordinate': moment,
+                    'username': user,
+                    'conn': 'old',
+                    'erase': 'yes'
+                }));
+                context.clearRect(0, 0, canvas.width, canvas.height);
+            }
+
+
+
+        });
+
+    </script>
+
+</body>
+</html>
